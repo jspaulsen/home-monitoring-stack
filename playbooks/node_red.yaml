@@ -1,0 +1,35 @@
+- hosts: localhost
+  become: true
+  vars:
+    node_red_directory: ${node_red_dir}
+    owner: ${user}
+    
+    # Defines the package.json loaded into the data
+    # directory
+    package: {
+      name: "home-monitoring-automation",
+      description: "Home Automation and Monitoring",
+      private: true, 
+      version: "1.0.0",
+      dependencies: {
+        "node-red-contrib-sonoff-tasmota": "^3.0.0",
+        "node-red-contrib-timerswitch": "^1.4.0"
+      }
+    }
+
+  tasks:
+    - name: Create node red data directory
+      file:
+        path: "{{ node_red_directory }}"
+        state: directory
+        owner:  "{{ owner }}"
+        
+    - name: Create node-red package.json
+      copy:
+        dest: "{{ node_red_directory }}/package.json"
+        owner: "{{ owner }}"
+        content: "{{ package }}"
+
+    - name: Install packages based on package.json.
+      npm:
+        path: "{{ node_red_directory }}"

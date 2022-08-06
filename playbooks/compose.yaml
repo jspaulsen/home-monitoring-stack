@@ -1,0 +1,89 @@
+- hosts: localhost
+  become: true
+  vars:
+    mqtt_directory: ${mqtt_dir}
+    mqtt_version: ${mqtt_version}
+    mqtt_port: ${mqtt_port}
+    node_red_version: ${node_red_version}
+    node_red_directory: ${node_red_dir}
+    node_red_port: ${node_red_port}
+    grafana_version: ${grafana_version}
+    grafana_directory: ${grafana_directory}
+    grafana_port: ${grafana_port}
+    postgres_port: ${postgres_port}
+    postgres_version: ${postgres_version}
+    postgres_directory: ${postgres_directory}
+    pg_user: ${postgres_user}
+    pg_database: ${postgres_database}
+    pg_password: ${postgres_password}
+    house_monitor_version: ${house_monitor_version}
+    config_dir: ${config_dir}
+    owner: ${user}
+    owner_user_id: 1000
+    
+  tasks:
+    - name: Create docker-compose file
+      copy:
+        dest: "{{ config_dir }}/docker-compose.yaml"
+        owner:  "{{ owner }}"
+        content: |
+          services:
+            mqtt:
+              image: "eclipse-mosquitto:{{ mqtt_version }}"
+              ports:
+                - "{{ mqtt_port }}:{{ mqtt_port }}"
+              restart: unless-stopped
+              volumes:
+                - "{{ mqtt_directory }}:/mosquitto"
+
+            node_red:
+              image: "nodered/node-red:{{ node_red_version }}"
+              ports:
+                - "{{ node_red_port }}:{{ node_red_port }}"
+              restart: unless-stopped
+              volumes:
+                - "{{ node_red_directory }}:/data"
+              depends_on:
+                - mqtt
+
+            postgres:
+              image: "timescale/timescaledb:{{ postgres_version }}"
+              ports:
+                - "{{ postgres_port }}:{{ postgres_port }}"
+              restart: unless-stopped
+              volumes:
+                - "{{ postgres_directory }}:/var/lib/postgresql/data"
+              environment:
+                POSTGRES_USER: "{{ pg_user }}"
+                POSTGRES_PASSWORD: "{{ pg_password }}"
+                POSTGRES_DB: "{{ pg_database }}"
+                PGDATA: /var/lib/postgresql/data/pgdata
+
+            house_monitor_sub:
+              image: "ghcr.io/jspaulsen/house-monitor-sub:{{ house_monitor_version }}"
+              restart: unless-stopped
+              environment:
+                DATABASE_URL: "postgresql://{{ pg_user }}:{{ pg_password }}@postgres/{{ pg_database }}?sslmode=disable"
+                PYTHONUNBUFFERED: 1
+                MQTT_BROKER_HOST: "mqtt"
+                LOG_LEVEL: "INFO"
+              depends_on:
+                - postgres
+
+            grafana:
+              image: "grafana/grafana:{{ grafana_version }}"
+              depends_on:
+                - postgres
+              ports:
+                - "{{ grafana_port }}:{{ grafana_port }}"
+              restart: unless-stopped
+              volumes:
+                - "{{ grafana_directory }}:/var/lib/grafana"
+              user: "{{ owner_user_id }}"
+
+    - name: docker-compose
+      docker_compose:
+        remove_orphans: yes
+        project_src: "{{ config_dir }}"
+        state: present
+      register: output

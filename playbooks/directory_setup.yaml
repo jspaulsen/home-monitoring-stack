@@ -1,0 +1,20 @@
+- hosts: localhost
+  become: true
+  vars:
+    grafana_directory: ${grafana_directory}
+    postgres_directory: ${postgres_directory}
+    owner: ${user}
+
+  tasks:
+    - name: Create Grafana directory
+      file:
+        path: "{{ grafana_directory }}"
+        state: directory
+        owner:  "{{ owner }}"
+
+    - name: Create Postgres directory
+      file:
+        path: "{{ postgres_directory }}"
+        state: directory
+        owner:  "{{ owner }}"
+

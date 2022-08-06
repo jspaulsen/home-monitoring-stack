@@ -1,0 +1,34 @@
+- hosts: localhost
+  become: true
+  vars:
+    mqtt_directory: ${mqtt_dir}
+    mqtt_port: 1883
+    mqtt_host: "0.0.0.0"
+    owner: ${user}
+
+  tasks:
+    - name: Create MQTT config directory
+      file:
+        path: "{{ mqtt_directory }}/config"
+        state: directory
+        owner:  "{{ owner }}"
+
+    - name: Create MQTT data directory
+      file:
+        path: "{{ mqtt_directory }}/data"
+        state: directory
+        owner:  "{{ owner }}"
+
+    - name: Create MQTT log directory
+      file:
+        path: "{{ mqtt_directory }}/log"
+        state: directory
+        owner:  "{{ owner }}"
+
+    - name: Create MQTT configuration file
+      copy:
+        dest: "{{ mqtt_directory }}/config/mosquitto.conf"
+        owner:  "{{ owner }}"
+        content: |
+          allow_anonymous true
+          listener {{ mqtt_port }} {{ mqtt_host }}
